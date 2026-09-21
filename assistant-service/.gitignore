@@ -1,0 +1,12 @@
+.env
+.streamlit/secrets.toml
+utp_assistant.db
+*.db-journal
+*.db-wal
+*.db-shm
+client_secret*.json
+token.json
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
