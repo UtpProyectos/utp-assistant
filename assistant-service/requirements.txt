@@ -6,3 +6,5 @@ python-dotenv>=1.0,<2.0
 cryptography>=42,<51
 streamlit
 psycopg2-binary>=2.9,<3.0
+
+streamlit-shadcn-ui
