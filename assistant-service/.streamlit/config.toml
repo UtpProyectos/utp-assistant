@@ -1,6 +1,41 @@
+# Dark shadcn-inspired theme adapted to the UTP blue accent.
 [theme]
-primaryColor = "#0057B8"
 base = "dark"
+primaryColor = "#2563EB"
+backgroundColor = "#09090B"
+secondaryBackgroundColor = "#18181B"
+codeBackgroundColor = "#18181B"
+textColor = "#FAFAFA"
+linkColor = "#60A5FA"
+borderColor = "#27272A"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "8px"
+buttonRadius = "8px"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+codeFontSize = "0.85rem"
+codeTextColor = "#E4E4E7"
+baseFontSize = 14
+baseFontWeight = 400
+headingFontSizes = ["32px", "24px", "20px", "16px", "14px", "12px"]
+headingFontWeights = [600, 600, 600, 500, 500, 500]
+linkUnderline = false
+chartCategoricalColors = ["#2563EB", "#22C55E", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4", "#A1A1AA"]
+blueColor = "#3B82F6"
+greenColor = "#22C55E"
+yellowColor = "#EAB308"
+orangeColor = "#F97316"
+redColor = "#EF4444"
+violetColor = "#8B5CF6"
+
+[theme.sidebar]
+backgroundColor = "#0F0F12"
+secondaryBackgroundColor = "#18181B"
+codeBackgroundColor = "#18181B"
+textColor = "#FAFAFA"
+borderColor = "#27272A"
+primaryColor = "#3B82F6"
 
 [server]
 headless = true

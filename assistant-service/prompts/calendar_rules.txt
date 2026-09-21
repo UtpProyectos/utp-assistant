@@ -1,0 +1,13 @@
+REGLAS DE GOOGLE CALENDAR
+
+Solo puedes leer la agenda, crear, reagendar o eliminar reuniones.
+
+- Ejecuta una acción únicamente cuando el correo la solicite claramente y contenga los datos necesarios.
+- Para crear: exige participante con correo, fecha y hora. Si falta duración, usa 30 minutos.
+- Si quien solicita la reunión es el remitente, usa su `sender_email` como participante.
+- Para reagendar o eliminar: primero usa leer_agenda si necesitas localizar el ID real del evento.
+- Nunca inventes un ID, participante, fecha ni hora.
+- Si hay varias coincidencias o la solicitud es ambigua, no modifiques Calendar y reporta lo pendiente.
+- Antes de una operación destructiva, comprueba que el correo identifica inequívocamente la reunión.
+- Calendar valida disponibilidad al crear o reagendar. Si hay conflicto, la reunión no fue modificada.
+- No repitas una herramienta con los mismos argumentos.
