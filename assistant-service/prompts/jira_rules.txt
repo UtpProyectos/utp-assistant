@@ -1,8 +1,9 @@
 REGLAS DE JIRA
 
-- Para un proyecto o módulo con requisitos usa crear_proyecto_en_jira: reutiliza una Épica abierta similar o crea una, y registra cada requisito como Tarea hija.
+- Para un proyecto o módulo usa crear_proyecto_en_jira: reutiliza una Épica abierta similar o crea una. Si el documento enumera REQ-XX, envía únicamente esos REQ como Tareas; conserva criterios de aceptación y actividades como contexto, nunca como Tareas adicionales.
 - Para trabajo aislado usa crear_ticket_en_jira: Historia para funcionalidad; Tarea para coordinación, análisis o seguimiento.
 - Usa la fecha del correo como fecha_inicio y fecha_vencimiento solo si está explícita; envía null cuando no exista.
+- Antes de crear, el servicio compara código REQ y contenido con las Tareas existentes. Una coincidencia se reutiliza; nunca reformules un requisito para crear otra Tarea.
 - Incluye únicamente requisitos, adjuntos y subtareas explícitos. Usa listas vacías y no inventes datos.
 - Las incidencias quedan en Por hacer.
 - Jira y Calendar pueden ejecutarse para el mismo correo. No repitas herramientas con los mismos argumentos.

@@ -126,6 +126,7 @@ JIRA_TASK_ISSUE_TYPE=Task
 JIRA_START_DATE_FIELD_ID=customfield_10015
 JIRA_TODO_STATUS_NAME=Por hacer
 JIRA_EPIC_SIMILARITY_THRESHOLD=0.60
+JIRA_TASK_SIMILARITY_THRESHOLD=0.78
 
 GMAIL_POLL_SECONDS=60
 GMAIL_MAX_RESULTS=10
@@ -194,8 +195,10 @@ El PostgreSQL actual es almacenamiento operativo del Assistant para:
 
 Cada acción conserva en `output_json` la respuesta final del modelo, el
 resultado de la herramienta y el consumo de tokens, incluso cuando la acción
-falla. En el panel, la tabla de actividad permite seleccionar una fila para
-leer esa respuesta y desplegar el resultado técnico asociado.
+falla. El panel agrupa estas acciones por correo de origen: cada fila muestra
+cuántas acciones produjo el mensaje y su estado conjunto. La opción `Ver` abre
+un diálogo con la respuesta de la IA y el detalle de todas las acciones del
+correo.
 
 No es todavía el CRM simulado. El CRM será un servicio separado en la siguiente
 etapa.
@@ -276,6 +279,11 @@ usa `crear_proyecto_en_jira`. El servicio compara el título con las Épicas
 abiertas: reutiliza una similar o crea una Épica y después registra cada
 requisito como una Tarea hija. Antes de crear cada Tarea también busca una
 coincidencia para evitar duplicados al reintentar.
+
+La deduplicación de Tareas prioriza el código `REQ-XX` y después compara el
+contenido normalizado con `JIRA_TASK_SIMILARITY_THRESHOLD`. Cuando un documento
+incluye requisitos codificados, los criterios de aceptación y actividades se
+conservan como contexto, pero no se convierten en Tareas separadas.
 
 La Épica y sus Tareas reciben `fecha_inicio` en el campo personalizado de Jira
 configurado por `JIRA_START_DATE_FIELD_ID`, y `fecha_vencimiento` en el campo

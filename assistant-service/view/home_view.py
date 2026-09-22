@@ -30,53 +30,108 @@ def _format_datetime(value: Any) -> str:
     return "—" if value is None else str(value)
 
 
-def _activity_rows(activities: list[dict[str, Any]]) -> list[dict[str, str]]:
+def _email_activity_rows(groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
-            "activity": str(activity.get("title") or "Actividad sin título"),
-            "service": SERVICE_LABELS.get(
-                str(activity.get("service")),
-                str(activity.get("service") or "—").title(),
-            ),
-            "status": STATUS_LABELS.get(
-                str(activity.get("status")),
-                str(activity.get("status") or "—").title(),
-            ),
-            "created_at": _format_datetime(activity.get("created_at")),
+            "subject": str(group.get("subject") or "Correo sin asunto"),
+            "sender": str(group.get("sender") or "Remitente desconocido"),
+            "action_count": int(group.get("action_count", 0) or 0),
+            "status": _group_status_label(group),
+            "last_activity_at": _format_datetime(group.get("last_activity_at")),
+            "details": ":material/visibility: Ver",
         }
-        for activity in activities
+        for group in groups
     ]
 
 
-def _render_activity_detail(activity: dict[str, Any]) -> None:
-    """Show the stored model response and tool result for one action."""
-    output = activity.get("output_data")
-    output = output if isinstance(output, dict) else {}
-    response = str(output.get("respuesta") or "").strip()
-    tool_result = output.get("tool_result")
-    usage = output.get("usage")
-    error = str(activity.get("error_message") or "").strip()
+def _group_status_label(group: dict[str, Any]) -> str:
+    if int(group.get("failed_count", 0) or 0) > 0:
+        return "Con errores"
+    if int(group.get("pending_count", 0) or 0) > 0:
+        return "En proceso"
+    return "Completado"
 
-    with st.container(border=True):
-        st.subheader("Detalle de la acción", icon=":material/chat_info:")
-        st.caption(str(activity.get("title") or "Actividad sin título"))
-        if response:
-            st.markdown(response)
-        else:
-            st.info("Esta acción no tiene una respuesta del modelo almacenada.")
-        if error:
-            st.error(error)
-        if tool_result or usage:
-            with st.expander("Resultado técnico"):
-                if tool_result:
-                    st.json(tool_result)
-                if usage:
-                    st.caption(
-                        "Tokens: "
-                        f"{int(usage.get('prompt_tokens', 0) or 0)} entrada · "
-                        f"{int(usage.get('completion_tokens', 0) or 0)} salida · "
-                        f"{int(usage.get('total_tokens', 0) or 0)} total"
-                    )
+
+@st.dialog(
+    "Detalle del correo",
+    width="large",
+    icon=":material/chat_info:",
+)
+def _render_email_activity_detail(
+    group: dict[str, Any],
+    activities: list[dict[str, Any]],
+) -> None:
+    """Show one email's model response and every action performed for it."""
+    st.subheader(str(group.get("subject") or "Correo sin asunto"))
+    st.caption(
+        f"{group.get('sender') or 'Remitente desconocido'} · "
+        f"{_format_datetime(group.get('received_at'))}"
+    )
+    st.markdown(
+        f"**{len(activities)} acciones** · "
+        f"{int(group.get('completed_count', 0) or 0)} completadas · "
+        f"{int(group.get('failed_count', 0) or 0)} fallidas · "
+        f"{int(group.get('pending_count', 0) or 0)} pendientes"
+    )
+
+    response = ""
+    for activity in reversed(activities):
+        output = activity.get("output_data")
+        if isinstance(output, dict) and str(output.get("respuesta") or "").strip():
+            response = str(output["respuesta"]).strip()
+            break
+
+    st.subheader("Respuesta del asistente", icon=":material/smart_toy:")
+    if response:
+        st.markdown(response)
+    else:
+        st.info("Este correo no tiene una respuesta del modelo almacenada.")
+
+    st.subheader(f"Acciones ejecutadas ({len(activities)})", icon=":material/checklist:")
+    for activity in activities:
+        output = activity.get("output_data")
+        output = output if isinstance(output, dict) else {}
+        tool_result = output.get("tool_result")
+        usage = output.get("usage")
+        error = str(activity.get("error_message") or "").strip()
+        service = SERVICE_LABELS.get(
+            str(activity.get("service")),
+            str(activity.get("service") or "—").title(),
+        )
+        status = STATUS_LABELS.get(
+            str(activity.get("status")),
+            str(activity.get("status") or "—").title(),
+        )
+
+        with st.container(border=True):
+            st.markdown(f"**{activity.get('title') or 'Actividad sin título'}**")
+            st.caption(
+                f"{service} · {status} · "
+                f"{_format_datetime(activity.get('created_at'))}"
+            )
+            if error:
+                st.error(error)
+            if tool_result or usage:
+                with st.expander("Resultado técnico"):
+                    if tool_result:
+                        st.json(tool_result)
+                    if usage:
+                        st.caption(
+                            "Tokens: "
+                            f"{int(usage.get('prompt_tokens', 0) or 0)} entrada · "
+                            f"{int(usage.get('completion_tokens', 0) or 0)} salida · "
+                            f"{int(usage.get('total_tokens', 0) or 0)} total"
+                        )
+
+
+def _select_email_for_dialog(groups: list[dict[str, Any]]) -> None:
+    """Persist the row clicked by a transient dataframe button."""
+    click = st.session_state.get("recent_email_activity_click")
+    if not click:
+        return
+    row = int(click["row"])
+    if 0 <= row < len(groups):
+        st.session_state["email_activity_dialog"] = groups[row]
 
 
 def render_home(
@@ -118,7 +173,10 @@ def render_home(
         ):
             st.logout()
 
-    activities = database.list_recent_actions(user_id=user["id"], limit=10)
+    email_activity_groups = database.list_recent_email_activity_groups(
+        user_id=user["id"],
+        limit=10,
+    )
     poll_info = poll_info or {}
     poll_error = poll_info.get("error")
     poll_result = poll_info.get("result") or {}
@@ -218,31 +276,57 @@ def render_home(
             key="jira-integration-card",
         )
 
-    st.subheader("Actividad reciente", icon=":material/history:")
+    st.subheader("Correos procesados", icon=":material/history:")
     st.caption(
-        "Decisiones del modelo y acciones ejecutadas por Gmail, Calendar o Jira."
+        "Cada correo agrupa la respuesta del modelo y todas las acciones ejecutadas."
     )
 
-    if activities:
-        st.caption("Selecciona una acción para ver la respuesta entregada por la IA.")
-        selection = st.dataframe(
-            _activity_rows(activities),
-            column_order=("activity", "service", "status", "created_at"),
+    if email_activity_groups:
+        st.caption("Pulsa Ver para revisar la respuesta y el detalle de sus acciones.")
+        st.dataframe(
+            _email_activity_rows(email_activity_groups),
+            column_order=(
+                "subject",
+                "sender",
+                "action_count",
+                "status",
+                "last_activity_at",
+                "details",
+            ),
             column_config={
-                "activity": st.column_config.TextColumn("Actividad", width="large"),
-                "service": st.column_config.TextColumn("Servicio", width="small"),
+                "subject": st.column_config.TextColumn("Correo", width="large"),
+                "sender": st.column_config.TextColumn("Remitente", width="medium"),
+                "action_count": st.column_config.NumberColumn(
+                    "Acciones",
+                    width="small",
+                    format="%d",
+                ),
                 "status": st.column_config.TextColumn("Estado", width="small"),
-                "created_at": st.column_config.TextColumn("Fecha", width="medium"),
+                "last_activity_at": st.column_config.TextColumn(
+                    "Última actividad",
+                    width="medium",
+                ),
+                "details": st.column_config.ButtonColumn(
+                    "Detalle",
+                    width="small",
+                    type="tertiary",
+                    on_click=_select_email_for_dialog,
+                    args=(email_activity_groups,),
+                    key="recent_email_activity_click",
+                ),
             },
             hide_index=True,
             height="content",
-            on_select="rerun",
-            selection_mode="single-row",
-            key="recent-activity-table",
+            key="recent-email-activity-table",
             lazy=False,
         )
-        if selection.selection.rows:
-            _render_activity_detail(activities[selection.selection.rows[0]])
+        selected_group = st.session_state.pop("email_activity_dialog", None)
+        if selected_group:
+            selected_activities = database.list_actions_for_gmail_message(
+                user_id=user["id"],
+                gmail_message_db_id=int(selected_group["gmail_message_db_id"]),
+            )
+            _render_email_activity_detail(selected_group, selected_activities)
     else:
         ui.card(
             title="Sin actividad todavía",

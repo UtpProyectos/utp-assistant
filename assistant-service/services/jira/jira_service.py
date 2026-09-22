@@ -32,6 +32,7 @@ class JiraService:
         story_issue_type: str | None = None,
         task_issue_type: str | None = None,
         similarity_threshold: float | None = None,
+        task_similarity_threshold: float | None = None,
         start_date_field_id: str | None = None,
         todo_status_name: str | None = None,
         timeout: int = 20,
@@ -53,6 +54,11 @@ class JiraService:
             similarity_threshold
             if similarity_threshold is not None
             else float(os.getenv("JIRA_EPIC_SIMILARITY_THRESHOLD", "0.60"))
+        )
+        self.task_similarity_threshold = (
+            task_similarity_threshold
+            if task_similarity_threshold is not None
+            else float(os.getenv("JIRA_TASK_SIMILARITY_THRESHOLD", "0.78"))
         )
         self.start_date_field_id = start_date_field_id or os.getenv(
             "JIRA_START_DATE_FIELD_ID", ""
@@ -126,12 +132,28 @@ class JiraService:
             )
 
         existing_tasks = self._list_child_tasks(epic["key"])
+        all_requirements = [
+            str(requirement).strip()
+            for requirement in data["requisitos"]
+            if str(requirement).strip()
+        ]
+        coded_requirements = [
+            requirement
+            for requirement in all_requirements
+            if self._requirement_code(requirement)
+        ]
+        requirements = coded_requirements or all_requirements
+        ignored_requirements = [
+            requirement
+            for requirement in all_requirements
+            if requirement not in requirements
+        ]
         created_tasks: list[dict[str, str]] = []
         reused_tasks: list[dict[str, str]] = []
         task_errors: list[dict[str, str]] = []
-        for requirement in data["requisitos"]:
+        for requirement in requirements:
             summary = self._task_summary(str(requirement))
-            existing = self._find_similar(summary, existing_tasks, threshold=0.90)
+            existing = self._find_similar_task(summary, existing_tasks)
             if existing:
                 reused_tasks.append(self._issue_result(existing["key"]))
                 continue
@@ -155,6 +177,7 @@ class JiraService:
             "tasks_created": created_tasks,
             "tasks_reused": reused_tasks,
             "task_errors": task_errors,
+            "requirements_ignored": ignored_requirements,
         }
 
     def _find_similar_epic(self, title: str) -> dict[str, str] | None:
@@ -166,10 +189,9 @@ class JiraService:
         return self._find_similar(title, epics, self.similarity_threshold)
 
     def _list_child_tasks(self, epic_key: str) -> list[dict[str, str]]:
-        jql = (
-            f'parent = "{epic_key}" AND issuetype = "{self.task_issue_type}" '
-            "ORDER BY created DESC"
-        )
+        # Do not filter by the localized issue type name here. Jira can return
+        # no rows for that combination even when the parent relation exists.
+        jql = f'parent = "{epic_key}" ORDER BY created DESC'
         return self._search_issues(jql)
 
     def _search_issues(self, jql: str) -> list[dict[str, str]]:
@@ -299,6 +321,36 @@ class JiraService:
             else None
         )
 
+    def _find_similar_task(
+        self,
+        requirement: str,
+        issues: list[dict[str, str]],
+    ) -> dict[str, str] | None:
+        requirement_code = self._requirement_code(requirement)
+        if requirement_code:
+            for issue in issues:
+                if self._requirement_code(issue.get("summary", "")) == requirement_code:
+                    return issue
+            issues = [
+                issue
+                for issue in issues
+                if self._requirement_code(issue.get("summary", "")) is None
+            ]
+        if not issues:
+            return None
+        best = max(
+            issues,
+            key=lambda issue: self._task_similarity(
+                requirement, issue.get("summary", "")
+            ),
+        )
+        return (
+            best
+            if self._task_similarity(requirement, best.get("summary", ""))
+            >= self.task_similarity_threshold
+            else None
+        )
+
     @classmethod
     def _similarity(cls, left: str, right: str) -> float:
         left_normalized, right_normalized = cls._normalize(left), cls._normalize(right)
@@ -310,6 +362,57 @@ class JiraService:
         jaccard = len(left_words & right_words) / len(union) if union else 0.0
         sequence = SequenceMatcher(None, left_normalized, right_normalized).ratio()
         return max(jaccard, sequence)
+
+    @classmethod
+    def _task_similarity(cls, left: str, right: str) -> float:
+        left_normalized = cls._normalize_requirement(left)
+        right_normalized = cls._normalize_requirement(right)
+        if not left_normalized or not right_normalized:
+            return 0.0
+        left_words = set(left_normalized.split())
+        right_words = set(right_normalized.split())
+        intersection = len(left_words & right_words)
+        union = left_words | right_words
+        jaccard = intersection / len(union) if union else 0.0
+        containment = intersection / min(len(left_words), len(right_words))
+        sequence = SequenceMatcher(None, left_normalized, right_normalized).ratio()
+        return max(jaccard, containment, sequence)
+
+    @classmethod
+    def _normalize_requirement(cls, value: str) -> str:
+        normalized = cls._normalize(value)
+        normalized = re.sub(r"\breq\s*0*\d+\b", " ", normalized)
+        normalized = re.sub(
+            r"\bprioridad\s+(alta|media|baja)\b",
+            " ",
+            normalized,
+        )
+        ignored_words = {
+            "actividad",
+            "actividades",
+            "criterio",
+            "criterios",
+            "aceptacion",
+            "solicitada",
+            "solicitadas",
+            "modulo",
+            "del",
+            "de",
+            "el",
+            "la",
+            "los",
+            "las",
+            "un",
+            "una",
+        }
+        return " ".join(
+            word for word in normalized.split() if word not in ignored_words
+        )
+
+    @classmethod
+    def _requirement_code(cls, value: str) -> str | None:
+        match = re.search(r"\breq[\s_-]*0*(\d+)\b", cls._normalize(value))
+        return f"REQ-{int(match.group(1)):02d}" if match else None
 
     @staticmethod
     def _normalize(value: str) -> str:

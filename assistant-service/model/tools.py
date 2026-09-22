@@ -115,6 +115,11 @@ TOOLS = [
                 "type": "array",
                 "items": {"type": "string"},
                 "minItems": 1,
+                "description": (
+                    "Solo requisitos funcionales principales. Si existen códigos REQ-XX, "
+                    "incluye únicamente esos elementos; no incluyas criterios de aceptación "
+                    "ni actividades como requisitos separados."
+                ),
             },
             "fecha_inicio": {
                 "type": "string",

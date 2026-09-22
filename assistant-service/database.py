@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS actions (
 
 CREATE INDEX IF NOT EXISTS idx_actions_user_created
     ON actions(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_actions_gmail_message
+    ON actions(gmail_message_id);
 CREATE INDEX IF NOT EXISTS idx_gmail_messages_user_status
     ON gmail_messages(user_id, status);
 """
@@ -361,6 +363,78 @@ class Database:
                     (user_id, limit),
                 )
                 rows = cur.fetchall()
+        return self._deserialize_action_rows(rows)
+
+    def list_recent_email_activity_groups(
+        self,
+        user_id: int,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Return one dashboard row per source email with action counters."""
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        gm.id AS gmail_message_db_id,
+                        gm.gmail_message_id,
+                        gm.sender,
+                        gm.subject,
+                        gm.received_at,
+                        MAX(a.created_at) AS last_activity_at,
+                        COUNT(a.id)::INTEGER AS action_count,
+                        COUNT(*) FILTER (
+                            WHERE a.status = 'completed'
+                        )::INTEGER AS completed_count,
+                        COUNT(*) FILTER (
+                            WHERE a.status = 'failed'
+                        )::INTEGER AS failed_count,
+                        COUNT(*) FILTER (
+                            WHERE a.status = 'pending'
+                        )::INTEGER AS pending_count
+                    FROM gmail_messages AS gm
+                    INNER JOIN actions AS a
+                        ON a.gmail_message_id = gm.id
+                    WHERE gm.user_id = %s
+                      AND a.user_id = %s
+                    GROUP BY
+                        gm.id,
+                        gm.gmail_message_id,
+                        gm.sender,
+                        gm.subject,
+                        gm.received_at
+                    ORDER BY MAX(a.created_at) DESC, gm.id DESC
+                    LIMIT %s
+                    """,
+                    (user_id, user_id, limit),
+                )
+                rows = cur.fetchall()
+        return [dict(row) for row in rows]
+
+    def list_actions_for_gmail_message(
+        self,
+        user_id: int,
+        gmail_message_db_id: int,
+    ) -> list[dict[str, Any]]:
+        """Return every action belonging to one email and one user."""
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, title, service, status, created_at, completed_at,
+                           output_json, error_message, action_type
+                    FROM actions
+                    WHERE user_id = %s
+                      AND gmail_message_id = %s
+                    ORDER BY created_at ASC, id ASC
+                    """,
+                    (user_id, gmail_message_db_id),
+                )
+                rows = cur.fetchall()
+        return self._deserialize_action_rows(rows)
+
+    @staticmethod
+    def _deserialize_action_rows(rows: list[Any]) -> list[dict[str, Any]]:
         activities = []
         for row in rows:
             activity = dict(row)
