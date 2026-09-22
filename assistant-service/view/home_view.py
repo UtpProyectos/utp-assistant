@@ -48,6 +48,37 @@ def _activity_rows(activities: list[dict[str, Any]]) -> list[dict[str, str]]:
     ]
 
 
+def _render_activity_detail(activity: dict[str, Any]) -> None:
+    """Show the stored model response and tool result for one action."""
+    output = activity.get("output_data")
+    output = output if isinstance(output, dict) else {}
+    response = str(output.get("respuesta") or "").strip()
+    tool_result = output.get("tool_result")
+    usage = output.get("usage")
+    error = str(activity.get("error_message") or "").strip()
+
+    with st.container(border=True):
+        st.subheader("Detalle de la acción", icon=":material/chat_info:")
+        st.caption(str(activity.get("title") or "Actividad sin título"))
+        if response:
+            st.markdown(response)
+        else:
+            st.info("Esta acción no tiene una respuesta del modelo almacenada.")
+        if error:
+            st.error(error)
+        if tool_result or usage:
+            with st.expander("Resultado técnico"):
+                if tool_result:
+                    st.json(tool_result)
+                if usage:
+                    st.caption(
+                        "Tokens: "
+                        f"{int(usage.get('prompt_tokens', 0) or 0)} entrada · "
+                        f"{int(usage.get('completion_tokens', 0) or 0)} salida · "
+                        f"{int(usage.get('total_tokens', 0) or 0)} total"
+                    )
+
+
 def render_home(
     user: dict[str, Any],
     database: Database,
@@ -193,18 +224,25 @@ def render_home(
     )
 
     if activities:
-        ui.table(
+        st.caption("Selecciona una acción para ver la respuesta entregada por la IA.")
+        selection = st.dataframe(
             _activity_rows(activities),
-            columns=[
-                {"key": "activity", "label": "Actividad"},
-                {"key": "service", "label": "Servicio"},
-                {"key": "status", "label": "Estado"},
-                {"key": "created_at", "label": "Fecha"},
-            ],
-            caption="Las 10 acciones más recientes",
-            max_height=440,
+            column_order=("activity", "service", "status", "created_at"),
+            column_config={
+                "activity": st.column_config.TextColumn("Actividad", width="large"),
+                "service": st.column_config.TextColumn("Servicio", width="small"),
+                "status": st.column_config.TextColumn("Estado", width="small"),
+                "created_at": st.column_config.TextColumn("Fecha", width="medium"),
+            },
+            hide_index=True,
+            height="content",
+            on_select="rerun",
+            selection_mode="single-row",
             key="recent-activity-table",
+            lazy=False,
         )
+        if selection.selection.rows:
+            _render_activity_detail(activities[selection.selection.rows[0]])
     else:
         ui.card(
             title="Sin actividad todavía",

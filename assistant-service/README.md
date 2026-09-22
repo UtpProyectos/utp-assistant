@@ -192,6 +192,11 @@ El PostgreSQL actual es almacenamiento operativo del Assistant para:
 - correos ya procesados;
 - acciones realizadas por la IA.
 
+Cada acción conserva en `output_json` la respuesta final del modelo, el
+resultado de la herramienta y el consumo de tokens, incluso cuando la acción
+falla. En el panel, la tabla de actividad permite seleccionar una fila para
+leer esa respuesta y desplegar el resultado técnico asociado.
+
 No es todavía el CRM simulado. El CRM será un servicio separado en la siguiente
 etapa.
 

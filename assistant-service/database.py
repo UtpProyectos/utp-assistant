@@ -361,7 +361,16 @@ class Database:
                     (user_id, limit),
                 )
                 rows = cur.fetchall()
-        return [dict(row) for row in rows]
+        activities = []
+        for row in rows:
+            activity = dict(row)
+            raw_output = activity.pop("output_json", None)
+            try:
+                activity["output_data"] = json.loads(raw_output) if raw_output else {}
+            except (TypeError, ValueError, json.JSONDecodeError):
+                activity["output_data"] = {}
+            activities.append(activity)
+        return activities
 
     def _connect(self) -> psycopg2.extensions.connection:
         return psycopg2.connect(
