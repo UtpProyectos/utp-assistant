@@ -20,6 +20,7 @@ SERVICE_LABELS = {
     "assistant": "Asistente",
     "calendar": "Calendar",
     "gmail": "Gmail",
+    "jira": "Jira",
 }
 
 
@@ -52,7 +53,7 @@ def render_home(
     database: Database,
     poll_info: dict[str, Any] | None = None,
 ) -> None:
-    """Render the operational Gmail and Calendar dashboard."""
+    """Render the operational Gmail, Calendar, and Jira dashboard."""
     name = str(user.get("name") or "Usuario")
     email = str(user.get("email") or "")
     picture = str(user.get("picture_url") or "") or None
@@ -69,7 +70,11 @@ def render_home(
         st.subheader(name)
         st.caption(email)
         ui.badges(
-            [("Gmail", "secondary"), ("Calendar", "secondary")],
+            [
+                ("Gmail", "secondary"),
+                ("Calendar", "secondary"),
+                ("Jira", "secondary"),
+            ],
             key="sidebar-services",
         )
         ui.separator(key="sidebar-separator")
@@ -99,14 +104,14 @@ def render_home(
 
     st.title("Panel del asistente", icon=":material/smart_toy:")
     st.caption(
-        f"Hola, {name}. Gmail se revisa automáticamente y Calendar ejecuta "
+        f"Hola, {name}. Gmail se revisa automáticamente; Calendar y Jira ejecutan "
         "solo las acciones confirmadas por el modelo."
     )
     ui.badges(
         [
             (state_label, "destructive" if poll_error else "default"),
             ("OAuth offline", "outline"),
-            ("Gmail + Calendar", "secondary"),
+            ("Gmail + Calendar + Jira", "secondary"),
         ],
         key="system-status-badges",
     )
@@ -153,7 +158,7 @@ def render_home(
             key="poll-error-alert",
         )
 
-    overview_columns = st.columns([1.35, 1], gap="medium")
+    overview_columns = st.columns([1.2, 1, 1], gap="medium")
     with overview_columns[0]:
         ui.card(
             title="Monitor de Gmail",
@@ -173,9 +178,19 @@ def render_home(
             footer=f"{actions_completed} acciones completadas · {actions_failed} fallidas",
             key="calendar-integration-card",
         )
+    with overview_columns[2]:
+        ui.card(
+            title="Integración de Jira",
+            description="Registra trabajo confirmado a partir de correos y adjuntos.",
+            content="Puede crear Historias y Tareas con trazabilidad al mensaje original.",
+            footer="Credenciales administradas por el entorno del Assistant.",
+            key="jira-integration-card",
+        )
 
     st.subheader("Actividad reciente", icon=":material/history:")
-    st.caption("Decisiones del modelo y acciones ejecutadas por Gmail o Calendar.")
+    st.caption(
+        "Decisiones del modelo y acciones ejecutadas por Gmail, Calendar o Jira."
+    )
 
     if activities:
         ui.table(
@@ -194,7 +209,10 @@ def render_home(
         ui.card(
             title="Sin actividad todavía",
             description="El historial aparecerá aquí cuando llegue un correo compatible con el filtro.",
-            content="El monitor está listo para analizar mensajes y coordinar reuniones.",
+            content=(
+                "El monitor está listo para analizar mensajes, coordinar reuniones "
+                "y crear tickets."
+            ),
             footer="La bandeja se revisa automáticamente.",
             key="empty-activity-card",
         )

@@ -1,4 +1,4 @@
-"""Email analysis and Calendar tool orchestration."""
+"""Email analysis and Calendar/Jira tool orchestration."""
 
 from __future__ import annotations
 
@@ -12,10 +12,12 @@ from openai import OpenAI
 
 from config import settings
 from model.tools import TOOLS
+from services.calendar.calendar_service import CalendarConflictError
 
 PROMPTS = (
     "system_prompt.txt",
     "calendar_rules.txt",
+    "jira_rules.txt",
     "pdf_rules.txt",
     "response_format.txt",
 )
@@ -24,14 +26,23 @@ REQUIRED_ARGS = {
     "crear_reunion": ("titulo", "descripcion", "fecha_inicio", "fecha_fin", "participantes"),
     "reagendar_reunion": ("evento_id", "fecha_inicio", "fecha_fin"),
     "eliminar_reunion": ("evento_id",),
+    "crear_ticket_en_jira": ("tipo", "titulo", "cliente", "descripcion", "fecha_inicio"),
+    "crear_proyecto_en_jira": (
+        "titulo",
+        "cliente",
+        "descripcion",
+        "requisitos",
+        "fecha_inicio",
+    ),
 }
 
 
 class UTPAssistant:
-    """Analyze one email and execute only the four supported Calendar tools."""
+    """Analyze one email and execute the supported Calendar and Jira tools."""
 
-    def __init__(self, calendar_service: Any) -> None:
+    def __init__(self, calendar_service: Any, jira_service: Any | None = None) -> None:
         self.calendar = calendar_service
+        self.jira = jira_service
         self.client, self.model = self._create_client()
         prompt_dir = Path(__file__).resolve().parent.parent / "prompts"
         self.instructions = "\n\n".join(
@@ -92,6 +103,8 @@ class UTPAssistant:
             "crear_reunion": self._crear_reunion,
             "reagendar_reunion": self._reagendar_reunion,
             "eliminar_reunion": self._eliminar_reunion,
+            "crear_ticket_en_jira": self._crear_ticket_en_jira,
+            "crear_proyecto_en_jira": self._crear_proyecto_en_jira,
         }
         if name not in handlers:
             return {"status": "failed", "message": f"Herramienta no soportada: {name}"}
@@ -106,7 +119,7 @@ class UTPAssistant:
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             return {"status": "failed", "message": str(exc)}
         except Exception as exc:
-            return {"status": "failed", "message": f"Error de Calendar: {exc}"}
+            return {"status": "failed", "message": f"Error ejecutando {name}: {exc}"}
 
     def _leer_agenda(self, args: dict[str, Any]) -> dict[str, Any]:
         events = self.calendar.list_events(
@@ -117,14 +130,32 @@ class UTPAssistant:
         return {"status": "completed", "events": events}
 
     def _crear_reunion(self, args: dict[str, Any]) -> dict[str, Any]:
-        event = self.calendar.create_event(
-            title=args["titulo"],
-            description=args["descripcion"],
-            start_datetime=self._datetime(args["fecha_inicio"]),
-            end_datetime=self._datetime(args["fecha_fin"]),
-            attendees=args["participantes"],
-        )
-        return {"status": "completed", "event": event}
+        requested_start = self._datetime(args["fecha_inicio"])
+        requested_end = self._datetime(args["fecha_fin"])
+        try:
+            event = self.calendar.create_event(
+                title=args["titulo"],
+                description=args["descripcion"],
+                start_datetime=requested_start,
+                end_datetime=requested_end,
+                attendees=args["participantes"],
+            )
+            return {"status": "completed", "event": event}
+        except CalendarConflictError:
+            event = self.calendar.create_event_at_next_available(
+                title=args["titulo"],
+                description=args["descripcion"],
+                requested_start=requested_start,
+                requested_end=requested_end,
+                attendees=args["participantes"],
+            )
+            return {
+                "status": "completed",
+                "event": event,
+                "auto_rescheduled": True,
+                "requested_start": requested_start.isoformat(),
+                "requested_end": requested_end.isoformat(),
+            }
 
     def _reagendar_reunion(self, args: dict[str, Any]) -> dict[str, Any]:
         event = self.calendar.reschedule_event(
@@ -137,6 +168,27 @@ class UTPAssistant:
     def _eliminar_reunion(self, args: dict[str, Any]) -> dict[str, Any]:
         event = self.calendar.delete_event(args["evento_id"])
         return {"status": "completed", "event": event}
+
+    def _crear_ticket_en_jira(self, args: dict[str, Any]) -> dict[str, Any]:
+        if self.jira is None:
+            raise RuntimeError("El servicio de Jira no está configurado en el Assistant.")
+        ticket = self.jira.create_issue(args)
+        return {"status": "completed", "ticket": ticket}
+
+    def _crear_proyecto_en_jira(self, args: dict[str, Any]) -> dict[str, Any]:
+        if self.jira is None:
+            raise RuntimeError("El servicio de Jira no está configurado en el Assistant.")
+        project = self.jira.create_project(args)
+        errors = project.get("task_errors", [])
+        return {
+            "status": "failed" if errors else "completed",
+            "message": (
+                f"La Épica quedó registrada, pero {len(errors)} Tarea(s) fallaron."
+                if errors
+                else "Épica y requisitos registrados correctamente."
+            ),
+            "project": project,
+        }
 
     def _completion(self, messages: list[dict[str, Any]], use_tools: bool = False) -> Any:
         params: dict[str, Any] = {"model": self.model, "messages": messages}

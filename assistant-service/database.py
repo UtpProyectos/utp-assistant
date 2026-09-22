@@ -351,7 +351,8 @@ class Database:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, title, service, status, created_at, completed_at
+                    SELECT id, title, service, status, created_at, completed_at,
+                           output_json, error_message, action_type
                     FROM actions
                     WHERE user_id = %s
                     ORDER BY created_at DESC, id DESC

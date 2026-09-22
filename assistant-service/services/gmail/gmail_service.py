@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from email.message import EmailMessage
 from email.utils import parseaddr, parsedate_to_datetime
 from typing import Any
 
@@ -31,6 +32,33 @@ class GmailService:
             userId="me", id=message_id, body={"removeLabelIds": ["UNREAD"]}
         ).execute()
 
+    def send_reply(self, original: dict[str, Any], body: str) -> dict[str, str]:
+        """Send a plain-text reply in the original Gmail thread."""
+        recipient = str(original.get("sender_email") or "").strip()
+        if not recipient:
+            raise ValueError("El correo original no contiene un remitente válido")
+
+        subject = str(original.get("subject") or "Sin asunto")
+        if not subject.lower().startswith("re:"):
+            subject = f"Re: {subject}"
+        message = EmailMessage()
+        message["To"] = recipient
+        message["Subject"] = subject
+        if message_id := original.get("message_id_header"):
+            message["In-Reply-To"] = str(message_id)
+            message["References"] = str(message_id)
+        message.set_content(body)
+
+        payload: dict[str, str] = {
+            "raw": base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+        }
+        if thread_id := original.get("thread_id"):
+            payload["threadId"] = str(thread_id)
+        sent = self._api().users().messages().send(
+            userId="me", body=payload
+        ).execute()
+        return {"id": str(sent.get("id", "")), "thread_id": str(sent.get("threadId", ""))}
+
     def _read_message(self, message_id: str) -> dict[str, Any]:
         message = self._api().users().messages().get(
             userId="me", id=message_id, format="full"
@@ -49,6 +77,7 @@ class GmailService:
             "sender_name": sender_name,
             "sender_email": sender_email,
             "subject": headers.get("subject", ""),
+            "message_id_header": headers.get("message-id", ""),
             "body": self._extract_body(payload),
             "date": self._normalize_date(headers.get("date", "")),
             "pdf_attachments": self._read_pdfs(message_id, payload),

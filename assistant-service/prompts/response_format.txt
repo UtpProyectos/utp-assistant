@@ -1,3 +1,3 @@
 RESPUESTA FINAL
 
-Responde al equipo interno de forma breve e indica: remitente, intención, acciones de Calendar ejecutadas o no requeridas, información pendiente y un resumen de máximo dos oraciones. Nunca afirmes que una acción fue realizada si la herramienta no devolvió status completed.
+Responde brevemente con: remitente, intención, resultado de Jira, resultado de Calendar, notificación enviada por Gmail y pendientes. Si Calendar reprogramó automáticamente, muestra horario solicitado y horario reservado. No afirmes acciones sin status completed.

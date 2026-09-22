@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from typing import Any
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 
 from config import settings
+
+
+class CalendarConflictError(ValueError):
+    """The requested Calendar interval overlaps another event."""
 
 
 class CalendarService:
@@ -60,6 +64,34 @@ class CalendarService:
         ).execute()
         return self._normalize(event)
 
+    def create_event_at_next_available(
+        self,
+        title: str,
+        description: str,
+        requested_start: datetime,
+        requested_end: datetime,
+        attendees: list[str],
+    ) -> dict[str, Any]:
+        """Create an event in the earliest free business-hours slot."""
+        self._validate_range(requested_start, requested_end)
+        duration = requested_end - requested_start
+        slots = self._available_slots(requested_start, duration, limit=1)
+        if not slots:
+            raise ValueError(
+                "No se encontró disponibilidad en los próximos días hábiles"
+            )
+        start, end = slots[0]
+        return self.create_event(
+            title=title,
+            description=(
+                f"{description}\n\nHorario reprogramado automáticamente por "
+                "indisponibilidad del horario solicitado."
+            ),
+            start_datetime=start,
+            end_datetime=end,
+            attendees=attendees,
+        )
+
     def reschedule_event(
         self,
         event_id: str,
@@ -96,7 +128,63 @@ class CalendarService:
     ) -> None:
         events = self.list_events(start, end, max_results=50)
         if any(event["id"] != ignore_event_id for event in events):
-            raise ValueError("El horario solicitado no está disponible")
+            raise CalendarConflictError("El horario solicitado no está disponible")
+
+    def _available_slots(
+        self,
+        requested_start: datetime,
+        duration: timedelta,
+        limit: int,
+    ) -> list[tuple[datetime, datetime]]:
+        timezone = requested_start.tzinfo
+        if timezone is None:
+            raise ValueError("La fecha solicitada debe incluir zona horaria")
+
+        days: list[datetime] = []
+        cursor = requested_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        while len(days) < settings.calendar_alternative_days:
+            if cursor.weekday() < 5:
+                days.append(cursor)
+            cursor += timedelta(days=1)
+
+        search_start = days[0].replace(
+            hour=settings.calendar_business_start, minute=0
+        )
+        search_end = days[-1].replace(hour=settings.calendar_business_end, minute=0)
+        busy = [
+            (
+                self._event_datetime(event["start"], timezone),
+                self._event_datetime(event["end"], timezone),
+            )
+            for event in self.list_events(search_start, search_end, max_results=50)
+            if event.get("start") and event.get("end")
+        ]
+
+        step = timedelta(minutes=settings.calendar_slot_step_minutes)
+        slots: list[tuple[datetime, datetime]] = []
+        for day in days:
+            candidate = datetime.combine(
+                day.date(), time(settings.calendar_business_start), tzinfo=timezone
+            )
+            day_end = datetime.combine(
+                day.date(), time(settings.calendar_business_end), tzinfo=timezone
+            )
+            while candidate + duration <= day_end:
+                end = candidate + duration
+                if candidate > requested_start and not any(
+                    candidate < busy_end and end > busy_start
+                    for busy_start, busy_end in busy
+                ):
+                    slots.append((candidate, end))
+                    if len(slots) == limit:
+                        return slots
+                candidate += step
+        return slots
+
+    @staticmethod
+    def _event_datetime(value: str, timezone: Any) -> datetime:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone)
 
     def _api(self) -> Resource:
         if self._service is None:

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 
-load_dotenv()
+# Always use the Assistant service environment, even when Streamlit is launched
+# from the repository root.
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 GOOGLE_SCOPES = (
     "https://www.googleapis.com/auth/gmail.modify",
@@ -25,6 +28,14 @@ class Settings:
 
         # Google.
         self.google_calendar_id = os.getenv("GOOGLE_CALENDAR_ID", "primary")
+        self.calendar_business_start = int(os.getenv("CALENDAR_BUSINESS_START", "9"))
+        self.calendar_business_end = int(os.getenv("CALENDAR_BUSINESS_END", "18"))
+        self.calendar_alternative_days = int(
+            os.getenv("CALENDAR_ALTERNATIVE_DAYS", "5")
+        )
+        self.calendar_slot_step_minutes = int(
+            os.getenv("CALENDAR_SLOT_STEP_MINUTES", "30")
+        )
 
         # LLM provider. During development OpenRouter can be used, then switched
         # to OpenAI without changing the model code.

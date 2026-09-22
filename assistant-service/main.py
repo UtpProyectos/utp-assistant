@@ -12,6 +12,7 @@ from services.calendar.calendar_service import CalendarService
 from services.gmail.email_poller import EmailPollingService
 from services.gmail.gmail_service import GmailService
 from services.google_oauth import GoogleOAuthError, GoogleOAuthService
+from services.jira.jira_service import JiraService
 from view.home_view import render_home
 from view.login_view import render_google_authorization, render_login
 
@@ -128,9 +129,10 @@ calendar = CalendarService(
     credentials=credentials,
     calendar_id=settings.google_calendar_id,
 )
+jira = JiraService()
 
 try:
-    assistant = UTPAssistant(calendar_service=calendar)
+    assistant = UTPAssistant(calendar_service=calendar, jira_service=jira)
 except ValueError as exc:
     st.error(f"Configuración del modelo incompleta: {exc}")
     render_home(user=user, database=database, poll_info=None)
