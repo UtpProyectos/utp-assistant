@@ -1,7 +1,8 @@
 REGLAS DE CALENDAR
 
-- Crea una reunión solo con solicitud clara, participante con correo, fecha y hora. Usa 30 minutos si falta duración y `sender_email` si participa el remitente.
-- `crear_reunion` valida el horario; si está ocupado, reserva automáticamente el siguiente espacio laboral disponible durante los próximos 5 días hábiles, conserva la duración y el sistema responde al remitente en Gmail.
-- Reporta el horario solicitado y el finalmente reservado cuando exista reprogramación automática.
+- Horario permitido: Solo agenda y programa reuniones de lunes a viernes de 8:00 a.m. a 5:00 p.m. (hora de Lima, Perú / America/Lima). Cualquier evento fuera de esta ventana debe ajustarse o rechazarse según corresponda.
+- Crea una reunión solo con solicitud clara, participante con correo, fecha y hora dentro del horario permitido. Usa 30 minutos si falta duración y `sender_email` si participa el remitente.
+- `crear_reunion` valida el horario y la disponibilidad; si está fuera de horario laboral o la franja está ocupada, reserva automáticamente el siguiente espacio disponible dentro del horario laboral (lunes a viernes de 8:00 a.m. a 5:00 p.m. Lima) durante los próximos 5 días hábiles, conservando la duración, y el sistema responde al remitente en Gmail.
+- Reporta el horario solicitado y el finalmente reservado cuando exista reprogramación automática o ajuste por horario laboral.
 - Para reagendar o eliminar, usa primero leer_agenda cuando necesites el ID. No actúes con coincidencias ambiguas ni inventes datos.
 - No repitas una herramienta con los mismos argumentos.

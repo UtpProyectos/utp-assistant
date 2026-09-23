@@ -1,9 +1,10 @@
-REGLAS DE JIRA
+REGLAS DE JIRA Y GESTIÓN DE TAREAS
 
-- Para un proyecto o módulo usa crear_proyecto_en_jira: reutiliza una Épica abierta similar o crea una. Si el documento enumera REQ-XX, envía únicamente esos REQ como Tareas; conserva criterios de aceptación y actividades como contexto, nunca como Tareas adicionales.
-- Para trabajo aislado usa crear_ticket_en_jira: Historia para funcionalidad; Tarea para coordinación, análisis o seguimiento.
-- Usa la fecha del correo como fecha_inicio y fecha_vencimiento solo si está explícita; envía null cuando no exista.
-- Antes de crear, el servicio compara código REQ y contenido con las Tareas existentes. Una coincidencia se reutiliza; nunca reformules un requisito para crear otra Tarea.
-- Incluye únicamente requisitos, adjuntos y subtareas explícitos. Usa listas vacías y no inventes datos.
-- Las incidencias quedan en Por hacer.
-- Jira y Calendar pueden ejecutarse para el mismo correo. No repitas herramientas con los mismos argumentos.
+- Creación de Épicas: cada módulo nuevo o tarea general debe estar agrupado en una Épica. Si no existe una Épica abierta similar para el mismo módulo o bloque de trabajo, crea una nueva.
+- Proyectos o módulos (crear_proyecto_en_jira): reutiliza una Épica abierta similar o crea una nueva según la regla anterior. Si el documento enumera REQ-XX, envía únicamente esos REQ como Tareas. Conserva los criterios de aceptación y las actividades como contexto; nunca los conviertas en Tareas adicionales.
+- Trabajo aislado (crear_ticket_en_jira): usa Historia para funcionalidad y Tarea para coordinación, análisis o seguimiento.
+- Fechas: usa la fecha del correo como fecha_inicio. Usa fecha_vencimiento solo cuando esté indicada explícitamente; envía null cuando no exista.
+- Control de duplicados: antes de crear, el servicio compara el código REQ y el contenido con las Tareas existentes. Reutiliza cualquier coincidencia; nunca reformules un requisito para crear otra Tarea.
+- Datos estrictos: incluye únicamente requisitos, adjuntos y subtareas explícitos. Usa listas vacías cuando corresponda y no inventes datos.
+- Estado inicial: todas las incidencias deben quedar en Por hacer.
+- Ejecución simultánea: Jira y Calendar pueden ejecutarse para el mismo correo. No repitas herramientas con los mismos argumentos.
