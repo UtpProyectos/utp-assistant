@@ -1,3 +1,4 @@
+streamlit
 streamlit[auth]>=1.64,<2.0
 streamlit-shadcn-ui>=1.4,<2.0
 authlib>=1.8,<2.0

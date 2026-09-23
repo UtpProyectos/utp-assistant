@@ -224,13 +224,13 @@ pip install -r requirements.txt
 Ejecutar:
 
 ```bash
-streamlit run main.py
+streamlit run main.py --server.port 8502
 ```
 
 Abrir:
 
 ```text
-http://localhost:8501
+http://localhost:8502
 ```
 
 ## Prueba recomendada de Calendar
