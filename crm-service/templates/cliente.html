@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cliente.nombre }}{% endblock %}
+{% block contenido %}
+<p><a href="{{ url_for('clientes') }}">← Volver a clientes</a></p>
+<h1>{{ cliente.nombre }} {{ cliente.apellidos or "" }}
+  <span class="badge {{ 'ok' if cliente.tipo == 'Cliente' }}">{{ cliente.tipo }}</span>
+  <span class="mini">{{ cliente.empresa or "" }}</span>
+</h1>
+
+<section class="tiles">
+  <div class="tile"><div class="tile-label">Correo</div><div class="tile-texto">{{ cliente.correo or "—" }}</div></div>
+  <div class="tile"><div class="tile-label">Teléfono</div><div class="tile-texto">{{ cliente.telefono or "—" }}</div></div>
+  <div class="tile"><div class="tile-label">Rubro</div><div class="tile-texto">{{ cliente.rubro or "—" }}</div></div>
+  <div class="tile"><div class="tile-label">Origen</div><div class="tile-texto">{{ cliente.origen or "—" }}</div></div>
+</section>
+
+{% if cliente.notas %}<p class="panel">📝 {{ cliente.notas }}</p>{% endif %}
+
+<div class="dos-columnas">
+  <div class="panel">
+    <h2>Oportunidades</h2>
+    {% if oportunidades %}
+    <table>
+      <thead><tr><th>Descripción</th><th class="num">Monto (S/)</th><th>Etapa</th><th>Cierre est.</th></tr></thead>
+      <tbody>
+        {% for o in oportunidades %}
+        <tr>
+          <td>{{ o.descripcion }}</td>
+          <td class="num">{{ "{:,.0f}".format(o.monto or 0) }}</td>
+          <td><span class="badge">{{ o.etapa }}</span></td>
+          <td>{{ o.cierre_estimado or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="mini">Sin oportunidades registradas.</p>{% endif %}
+
+    <h2>Historial de actividades</h2>
+    <ul class="lista-acciones">
+      {% for a in actividades %}
+      <li>
+        <div>
+          <strong>{{ a.tipo }}</strong> · {{ a.fecha }} {% if a.completada %}<span class="badge ok">completada</span>{% endif %}
+          <div class="mini">{{ a.detalle or "" }}</div>
+          {% if a.proxima_accion %}<div class="mini">Próx.: {{ a.proxima_accion }} ({{ a.proxima_fecha or "sin fecha" }})</div>{% endif %}
+        </div>
+      </li>
+      {% else %}
+      <li class="mini">Sin actividades.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h2>Editar cliente</h2>
+    <form method="post" action="{{ url_for('editar_cliente', cliente_id=cliente.id) }}" class="formulario">
+      <label>Nombre<input name="nombre" value="{{ cliente.nombre }}"></label>
+      <label>Apellidos<input name="apellidos" value="{{ cliente.apellidos or '' }}"></label>
+      <label>Tipo
+        <select name="tipo">
+          <option {{ 'selected' if cliente.tipo == 'Cliente potencial' }}>Cliente potencial</option>
+          <option {{ 'selected' if cliente.tipo == 'Cliente' }}>Cliente</option>
+        </select>
+      </label>
+      <label>Empresa<input name="empresa" value="{{ cliente.empresa or '' }}"></label>
+      <label>Correo<input type="email" name="correo" value="{{ cliente.correo or '' }}"></label>
+      <label>Teléfono<input name="telefono" value="{{ cliente.telefono or '' }}"></label>
+      <label>Rubro<input name="rubro" value="{{ cliente.rubro or '' }}"></label>
+      <label>Notas<textarea name="notas" rows="3">{{ cliente.notas or '' }}</textarea></label>
+      <button class="boton">Actualizar</button>
+    </form>
+
+    <h2>Registrar actividad</h2>
+    <form method="post" class="formulario">
+      <label>Tipo
+        <select name="tipo">
+          <option>Llamada</option><option>Reunión</option><option>Correo</option><option>Visita</option>
+        </select>
+      </label>
+      <label>Detalle<textarea name="detalle" rows="3"></textarea></label>
+      <label>Próxima acción<input name="proxima_accion"></label>
+      <label>Fecha próxima acción<input type="date" name="proxima_fecha"></label>
+      <button class="boton">Guardar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Ventas potenciales{% endblock %}
+{% block contenido %}
+<h1>Ventas potenciales</h1>
+
+<div class="panel">
+  <h2>Nueva oportunidad</h2>
+  <form method="post" class="formulario horizontal">
+    <label>Cliente
+      <select name="cliente_id" required>
+        {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }} ({{ c.empresa or "s/e" }})</option>{% endfor %}
+      </select>
+    </label>
+    <label>Descripción *<input name="descripcion" required></label>
+    <label>Monto (S/)<input type="number" name="monto" min="0" step="100" value="0"></label>
+    <label>Probabilidad %<input type="number" name="probabilidad" min="0" max="100" value="50"></label>
+    <label>Cierre estimado<input type="date" name="cierre_estimado"></label>
+    <button class="boton">Agregar</button>
+  </form>
+</div>
+
+<div class="tablero">
+  {% for etapa, ops in columnas %}
+  <div class="columna">
+    <h3>{{ etapa }} <span class="mini">({{ ops | length }})</span></h3>
+    {% for o in ops %}
+    <div class="tarjeta">
+      <strong>{{ o.descripcion }}</strong>
+      <div class="mini">{{ o.cliente }} · {{ o.empresa or "" }}</div>
+      <div class="mini">S/ {{ "{:,.0f}".format(o.monto or 0) }} · {{ o.probabilidad }}% · cierre {{ o.cierre_estimado or "—" }}</div>
+      <form method="post" action="{{ url_for('mover_oportunidad', oportunidad_id=o.id) }}" class="mover">
+        <select name="etapa" onchange="this.form.submit()" aria-label="Mover a etapa">
+          <option value="" selected disabled>Mover a…</option>
+          {% for e in etapas if e != etapa %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+        </select>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

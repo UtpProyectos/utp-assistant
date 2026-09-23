@@ -13,6 +13,7 @@ from openai import OpenAI
 from config import settings
 from model.tools import TOOLS
 from services.calendar.calendar_service import CalendarConflictError
+from services.crm.crm_service import CRMService
 
 PROMPTS = (
     "system_prompt.txt",
@@ -34,15 +35,18 @@ REQUIRED_ARGS = {
         "requisitos",
         "fecha_inicio",
     ),
+    "buscar_cliente_crm": ("correo",),
+    "registrar_cliente_crm": ("nombre", "tipo"),
 }
 
 
 class UTPAssistant:
     """Analyze one email and execute the supported Calendar and Jira tools."""
 
-    def __init__(self, calendar_service: Any, jira_service: Any | None = None) -> None:
+    def __init__(self, calendar_service: Any, jira_service: Any | None = None, crm_service: CRMService | None = None) -> None:
         self.calendar = calendar_service
         self.jira = jira_service
+        self.crm = crm_service
         self.client, self.model = self._create_client()
         prompt_dir = Path(__file__).resolve().parent.parent / "prompts"
         self.instructions = "\n\n".join(
@@ -105,6 +109,8 @@ class UTPAssistant:
             "eliminar_reunion": self._eliminar_reunion,
             "crear_ticket_en_jira": self._crear_ticket_en_jira,
             "crear_proyecto_en_jira": self._crear_proyecto_en_jira,
+            "buscar_cliente_crm": self._buscar_cliente_crm,
+            "registrar_cliente_crm": self._registrar_cliente_crm,
         }
         if name not in handlers:
             return {"status": "failed", "message": f"Herramienta no soportada: {name}"}
@@ -189,6 +195,27 @@ class UTPAssistant:
             ),
             "project": project,
         }
+
+    def _buscar_cliente_crm(self, args: dict[str, Any]) -> dict[str, Any]:
+        if self.crm is None:
+            raise RuntimeError("El servicio CRM no está configurado en el Assistant.")
+        cliente = self.crm.buscar_por_correo(args["correo"])
+        if cliente:
+            return {"status": "completed", "encontrado": True, "cliente": cliente}
+        return {"status": "completed", "encontrado": False, "cliente": None}
+
+    def _registrar_cliente_crm(self, args: dict[str, Any]) -> dict[str, Any]:
+        if self.crm is None:
+            raise RuntimeError("El servicio CRM no está configurado en el Assistant.")
+        cliente_id = args.pop("cliente_id", None)
+        if cliente_id:
+            # Actualizar cliente existente
+            self.crm.actualizar_cliente(cliente_id, args)
+            return {"status": "completed", "accion": "actualizado", "cliente_id": cliente_id}
+        else:
+            # Crear cliente nuevo
+            result = self.crm.crear_cliente(args)
+            return {"status": "completed", "accion": "creado", "cliente_id": result.get("cliente_id")}
 
     def _completion(self, messages: list[dict[str, Any]], use_tools: bool = False) -> Any:
         params: dict[str, Any] = {"model": self.model, "messages": messages}

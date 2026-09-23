@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}Proyectos{% endblock %}
+{% block contenido %}
+<h1>Proyectos</h1>
+
+<div class="dos-columnas">
+  <div class="panel">
+    <table>
+      <thead><tr><th>Proyecto</th><th>Cliente</th><th>Estado</th><th>Inicio</th><th>Fin</th></tr></thead>
+      <tbody>
+        {% for p in proyectos %}
+        <tr>
+          <td>
+            <strong>{{ p.nombre }}</strong>
+            {% if p.descripcion %}<div class="mini">{{ p.descripcion }}</div>{% endif %}
+          </td>
+          <td>{{ p.cliente }}<div class="mini">{{ p.empresa or "" }}</div></td>
+          <td>
+            <form method="post" action="{{ url_for('cambiar_estado_proyecto', proyecto_id=p.id) }}">
+              <select name="estado" onchange="this.form.submit()" aria-label="Estado del proyecto">
+                {% for e in estados %}<option {{ 'selected' if e == p.estado }}>{{ e }}</option>{% endfor %}
+              </select>
+            </form>
+          </td>
+          <td>{{ p.fecha_inicio or "—" }}</td>
+          <td>{{ p.fecha_fin or "—" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="mini">Sin proyectos registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Nuevo proyecto</h2>
+    <form method="post" class="formulario">
+      <label>Cliente
+        <select name="cliente_id" required>
+          {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }} ({{ c.empresa or "s/e" }})</option>{% endfor %}
+        </select>
+      </label>
+      <label>Nombre *<input name="nombre" required></label>
+      <label>Descripción<textarea name="descripcion" rows="3"></textarea></label>
+      <label>Estado
+        <select name="estado">{% for e in estados %}<option>{{ e }}</option>{% endfor %}</select>
+      </label>
+      <label>Fecha inicio<input type="date" name="fecha_inicio"></label>
+      <label>Fecha fin<input type="date" name="fecha_fin"></label>
+      <button class="boton">Guardar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

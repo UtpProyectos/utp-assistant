@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}CRM{% endblock %} · CRM Seguro</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="marca">🛡️ CRM Seguro</div>
+    <nav>
+      <a href="{{ url_for('dashboard') }}" class="{{ 'activo' if activo == 'dashboard' }}">Dashboard</a>
+      <a href="{{ url_for('clientes') }}" class="{{ 'activo' if activo == 'clientes' }}">Clientes</a>
+      <a href="{{ url_for('oportunidades') }}" class="{{ 'activo' if activo == 'oportunidades' }}">Ventas potenciales</a>
+      <a href="{{ url_for('proyectos') }}" class="{{ 'activo' if activo == 'proyectos' }}">Proyectos</a>
+      <a href="{{ url_for('chat') }}" class="{{ 'activo' if activo == 'asistente' }}">Asistente IA</a>
+      <a href="{{ url_for('acciones') }}" class="{{ 'activo' if activo == 'acciones' }}">Acciones IA</a>
+    </nav>
+  </header>
+  <main>
+    {% block contenido %}{% endblock %}
+  </main>
+</body>
+</html>

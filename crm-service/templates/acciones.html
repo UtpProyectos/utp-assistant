@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Acciones del asistente{% endblock %}
+{% block contenido %}
+<h1>Acciones del asistente</h1>
+<p class="mini">Registro de todo lo que hace el chatbot: consultas recibidas, herramientas ejecutadas
+(sobre la base de datos) y respuestas entregadas. Los sistemas externos del grupo también pueden
+registrar acciones vía <code>POST /api/acciones-chatbot</code>.</p>
+
+<div class="panel">
+  <table>
+    <thead><tr><th>Fecha y hora</th><th>Acción</th><th>Herramienta</th><th>Detalle</th></tr></thead>
+    <tbody>
+      {% for a in acciones %}
+      <tr>
+        <td class="mini">{{ a.creado_en }}</td>
+        <td><span class="badge {{ 'ok' if a.accion == 'respuesta' }}">{{ a.accion }}</span></td>
+        <td>{{ a.herramienta or "—" }}</td>
+        <td class="mini">{{ a.detalle or "" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="mini">Aún no hay acciones registradas. Usa el asistente y aparecerán aquí.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -139,4 +139,48 @@ TOOLS = [
             "adjuntos",
         ],
     ),
+    _tool(
+        "buscar_cliente_crm",
+        (
+            "Busca en el CRM si el remitente del correo ya existe como cliente "
+            "o cliente potencial usando su correo exacto. Úsala SIEMPRE antes de "
+            "registrar_cliente_crm para evitar duplicados."
+        ),
+        {
+            "correo": {
+                "type": "string",
+                "description": "Dirección de correo exacta del remitente.",
+            },
+        },
+        ["correo"],
+    ),
+    _tool(
+        "registrar_cliente_crm",
+        (
+            "Crea o actualiza un contacto en el CRM. "
+            "Si ya existe (usa buscar_cliente_crm primero), envía solo los campos "
+            "que hayan cambiado junto con 'cliente_id'. "
+            "Si no existe, omite 'cliente_id' y se creará uno nuevo. "
+            "Clasifica como 'Cliente potencial' salvo evidencia explícita de que ya es cliente."
+        ),
+        {
+            "cliente_id": {
+                "type": ["integer", "null"],
+                "description": "ID del cliente existente. Null si es nuevo.",
+            },
+            "nombre": {"type": "string", "description": "Solo el nombre de pila."},
+            "apellidos": {"type": ["string", "null"]},
+            "tipo": {
+                "type": "string",
+                "enum": ["Cliente potencial", "Cliente"],
+                "description": "Por defecto 'Cliente potencial'.",
+            },
+            "empresa": {"type": ["string", "null"]},
+            "correo": {"type": ["string", "null"]},
+            "telefono": {"type": ["string", "null"]},
+            "rubro": {"type": ["string", "null"]},
+            "notas": {"type": ["string", "null"]},
+        },
+        ["nombre", "tipo"],
+    ),
 ]

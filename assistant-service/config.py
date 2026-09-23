@@ -58,5 +58,8 @@ class Settings:
         # Dates without an explicit offset are interpreted in this timezone.
         self.app_timezone = os.getenv("APP_TIMEZONE", "America/Lima")
 
+        # CRM service — URL base de la API REST del CRM Flask del grupo.
+        self.crm_base_url = os.getenv("CRM_BASE_URL", "http://localhost:5000")
+
 
 settings = Settings()

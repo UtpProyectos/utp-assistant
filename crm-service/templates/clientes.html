@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}Clientes{% endblock %}
+{% block contenido %}
+<h1>Clientes</h1>
+
+<div class="dos-columnas">
+  <div class="panel ancho">
+    <form method="get" class="barra-busqueda">
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre, empresa o rubro…">
+      <button class="boton">Buscar</button>
+    </form>
+    <table>
+      <thead><tr><th>Nombre</th><th>Tipo</th><th>Empresa</th><th>Rubro</th><th>Contacto</th><th>Origen</th></tr></thead>
+      <tbody>
+        {% for c in clientes %}
+        <tr>
+          <td><a href="{{ url_for('cliente', cliente_id=c.id) }}">{{ c.nombre }} {{ c.apellidos or "" }}</a></td>
+          <td><span class="badge {{ 'ok' if c.tipo == 'Cliente' }}">{{ c.tipo }}</span></td>
+          <td>{{ c.empresa or "—" }}</td>
+          <td>{{ c.rubro or "—" }}</td>
+          <td class="mini">{{ c.correo or "" }}<br>{{ c.telefono or "" }}</td>
+          <td>{{ c.origen or "—" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="mini">Sin resultados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Nuevo cliente</h2>
+    <form method="post" class="formulario">
+      <label>Nombre *<input name="nombre" required></label>
+      <label>Apellidos<input name="apellidos"></label>
+      <label>Tipo
+        <select name="tipo">
+          <option>Cliente potencial</option><option>Cliente</option>
+        </select>
+      </label>
+      <label>Empresa<input name="empresa"></label>
+      <label>Correo<input type="email" name="correo"></label>
+      <label>Teléfono<input name="telefono"></label>
+      <label>Rubro<input name="rubro"></label>
+      <label>Origen
+        <select name="origen">
+          <option>Referido</option><option>LinkedIn</option><option>Web</option>
+          <option>Evento</option><option>Otro</option>
+        </select>
+      </label>
+      <label>Notas<textarea name="notas" rows="3"></textarea></label>
+      <button class="boton">Guardar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
